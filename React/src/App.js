@@ -3,16 +3,22 @@ import './App.css';
 import TodoForm from './components/TodoForm';
 import TodoList from './components/TodoList';
 import TabFilter from './components/TabFilter';
+import { v4 as uuidv4 } from 'uuid';
+
+
 
 function App() {
   const [todos, setTodos] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
   const [sortBy, setSortBy] = useState('date'); // 'date', 'priority'
 
+  // arrow function addTodo will add a item to do 
   const addTodo = (todoData) => {
     if (todoData.text.trim().length === 0) return;
+    // ^ Line above prevents addition of emptyTodos.
     const newTodo = {
-      id: Math.random().toString(),
+      id: uuidv4(),
+      // id is going to be a random number between 0 and 1 convert it into a string  
       text: todoData.text,
       completed: false,
       category: todoData.category,
@@ -23,6 +29,7 @@ function App() {
     setTodos([...todos, newTodo]);
   };
 
+  // arrow function to toggleTodo will toggle a to do be on or off finds based off the id
   const toggleTodo = (id) => {
     setTodos(
       todos.map(todo =>
@@ -31,10 +38,12 @@ function App() {
     );
   };
 
+  // arrow function to deleteTodo based on its id.
   const deleteTodo = (id) => {
     setTodos(todos.filter(todo => todo.id !== id));
   };
 
+  // arrow function to editTodo passed in an id and uddatedTodo based on call. Will set previous todo to the updatedTodo
   const editTodo = (id, updatedTodo) => {
     setTodos(
       todos.map(todo =>
@@ -43,6 +52,7 @@ function App() {
     );
   };
 
+  //
   const filteredTodos = todos.filter(todo => {
     if (activeTab === 'completed') return todo.completed;
     if (activeTab === 'pending') return !todo.completed;
