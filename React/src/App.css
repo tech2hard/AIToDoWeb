@@ -166,3 +166,7 @@ select {
   border: 1px solid #ddd;
   border-radius: 4px;
 }
+
+.auth-buttons {
+  margin-bottom: 20px; /* Adds space below Sign In/Log Out */
+}
