@@ -3,7 +3,6 @@ import './App.css';
 import TodoForm from './components/TodoForm';
 import TodoList from './components/TodoList';
 import TabFilter from './components/TabFilter';
-import { v4 as uuidv4 } from 'uuid';
 import { auth, signInWithGoogle, logOut, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
@@ -27,11 +26,19 @@ function App() {
     if (!user) return; // Don't fetch if user is not logged in
 
     const fetchTodos = async () => {
+      if (!user?.uid) return; // Prevents running query if user is not logged in
+    
       try {
         const q = query(collection(db, "todos"), where("userId", "==", user.uid));
         const querySnapshot = await getDocs(q);
-        const todosData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        const todosData = querySnapshot.docs.map(doc => ({
+          id: doc.id, // Firestore-generated ID
+          ...doc.data()
+        }));
+    
         setTodos(todosData);
+        console.log("Fetched todos:", todosData); // Debugging log
       } catch (error) {
         console.error("Error fetching todos:", error);
       }
@@ -40,14 +47,14 @@ function App() {
     fetchTodos();
   }, [user]);
 
-  // Add a new todo and store in Firestore
+  // Add a new todo and store it in Firestore
   const addTodo = async (todoData) => {
-    if (!user) return; // Ensure user is logged in
+    if (!user) return;
     if (todoData.text.trim().length === 0) return;
 
     const newTodo = {
-      id: uuidv4(),
       text: todoData.text,
+      description: todoData.description,
       completed: false,
       category: todoData.category,
       dueDate: todoData.dueDate,
@@ -57,8 +64,8 @@ function App() {
     };
 
     try {
-      await addDoc(collection(db, "todos"), newTodo);
-      setTodos([...todos, newTodo]);
+      const docRef = await addDoc(collection(db, "todos"), newTodo);
+      setTodos([...todos, { id: docRef.id, ...newTodo }]); // Firestore-generated ID
     } catch (error) {
       console.error("Error adding todo:", error);
     }
@@ -81,9 +88,17 @@ function App() {
 
   // Delete a todo from Firestore
   const deleteTodo = async (id) => {
+    console.log("Deleting todo with ID:", id); // Debugging log
+  
+    if (!id) {
+      console.error("Error: ID is undefined!");
+      return;
+    }
+  
     try {
       await deleteDoc(doc(db, "todos", id));
       setTodos(todos.filter(todo => todo.id !== id));
+      console.log("Todo deleted successfully!");
     } catch (error) {
       console.error("Error deleting todo:", error);
     }
@@ -109,11 +124,13 @@ function App() {
   // Sort todos by date or priority
   const sortedTodos = [...filteredTodos].sort((a, b) => {
     if (sortBy === 'date') {
-      return new Date(a.dueDate) - new Date(b.dueDate);
+      const dateA = a.dueDate ? new Date(a.dueDate) : new Date(0); // Handle empty dueDate
+      const dateB = b.dueDate ? new Date(b.dueDate) : new Date(0);
+      return dateA - dateB;
     }
     if (sortBy === 'priority') {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
+      return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
     }
     return 0;
   });
@@ -127,7 +144,7 @@ function App() {
       ) : (
         <div>
           <p>Welcome, {user.displayName}!</p>
-          <button className = 'auth-buttons' onClick={logOut}>Log Out</button>
+          <button className='auth-buttons' onClick={logOut}>Log Out</button>
 
           <TabFilter activeTab={activeTab} onTabChange={setActiveTab} />
           <div className="sort-control">
