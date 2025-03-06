@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import TodoForm from './components/TodoForm';
 import TodoList from './components/TodoList';
-import TabFilter from './components/TabFilter';
+import TubelightNavbar from './components/TubelightNavbar';
+import LoginPage from './components/LoginPage';
 import { auth, signInWithGoogle, logOut, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
@@ -127,51 +128,43 @@ function App() {
   });
 
   return (
-    <div className="max-w-3xl mx-auto p-6 bg-gray-100 shadow-lg rounded-lg mt-10">
-      <h1 className="text-3xl font-bold text-center mb-4 text-blue-600">Todo List</h1>
-
+    <div className="min-h-screen bg-white text-black">
       {!user ? (
-        <div className="flex justify-center">
-          <button 
-            className="bg-blue-500 text-white px-5 py-2 rounded-md hover:bg-blue-700 transition-all"
-            onClick={signInWithGoogle}
-          >
-            Sign In with Google
-          </button>
-        </div>
+        <LoginPage onLogin={signInWithGoogle} />
       ) : (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-lg font-semibold">Welcome, {user.displayName}!</p>
-            <button 
-              className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-all"
-              onClick={logOut}
-            >
-              Log Out
-            </button>
+        <div className="relative pt-24">
+          <TubelightNavbar currentFilter={activeTab} onFilterChange={setActiveTab} />
+          
+          <div className="max-w-3xl mx-auto px-6">
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-2xl font-bold">Welcome, {user.displayName}</h1>
+              <button 
+                onClick={logOut}
+                className="px-4 py-2 text-sm bg-black text-white rounded-full hover:bg-gray-800 transition-colors"
+              >
+                Log Out
+              </button>
+            </div>
+
+            <div className="flex justify-end mb-6">
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              >
+                <option value="date">Sort by Date</option>
+                <option value="priority">Sort by Priority</option>
+              </select>
+            </div>
+
+            <TodoForm onAdd={addTodo} />
+            <TodoList 
+              todos={sortedTodos} 
+              onToggle={toggleTodo} 
+              onDelete={deleteTodo}
+              onEdit={editTodo}
+            />
           </div>
-
-          <TabFilter activeTab={activeTab} onTabChange={setActiveTab} />
-
-          <div className="flex justify-between items-center mb-4">
-            <label className="text-lg font-semibold">Sort by:</label>
-            <select 
-              value={sortBy} 
-              onChange={(e) => setSortBy(e.target.value)}
-              className="p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="date">Due Date</option>
-              <option value="priority">Priority</option>
-            </select>
-          </div>
-
-          <TodoForm onAdd={addTodo} />
-          <TodoList 
-            todos={sortedTodos} 
-            onToggle={toggleTodo} 
-            onDelete={deleteTodo}
-            onEdit={editTodo}
-          />
         </div>
       )}
     </div>
