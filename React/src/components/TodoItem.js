@@ -87,36 +87,40 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
 
   // Default display mode
   return (
-    <li className="todo-item">
-      <input
-        type="checkbox"
-        checked={todo.completed}
-        onChange={() => todo.id && onToggle(todo.id)}
-      />
-      <span 
-        className="todo-text"
-        style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}
-      >
-        {todo.text}
-      </span>
-      <span className="todo-category">{todo.category}</span>
-      <span className="todo-date">
-        {todo.dueDate ? new Date(todo.dueDate).toLocaleDateString() : 'No due date'}
-      </span>
-      <span 
-        className="todo-priority"
-        style={{ backgroundColor: getPriorityColor(todo.priority) }}
-      >
-        {todo.priority}
-      </span>
+<li className="flex justify-between items-center bg-gray-100 p-4 rounded-lg shadow-md my-2">
+  <input
+    type="checkbox"
+    checked={todo.completed}
+    onChange={() => todo.id && onToggle(todo.id)}
+    className="mr-3 w-5 h-5"
+  />
 
-      {todo.description && (<p className="todo-description">{todo.description}</p>)}
+  <div className="flex-grow">
+    <div className={`text-lg font-semibold ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+      {todo.text}
+    </div>
+    <p className="text-sm text-gray-600">{todo.description || "No description available"}</p>
+  </div>
 
-      <div className="todo-actions">
-        <button onClick={() => setIsEditing(true)}>Edit</button>
-        <button onClick={() => todo.id && onDelete(todo.id)}>Delete</button>
-      </div>
-    </li>
+  <div className="flex flex-col items-center">
+    <span className="text-xs text-white px-2 py-1 rounded-md"
+      style={{ backgroundColor: getPriorityColor(todo.priority) }}>
+      {todo.priority}
+    </span>
+    <span className="text-xs text-gray-500">{todo.dueDate ? new Date(todo.dueDate).toLocaleDateString() : 'No due date'}</span>
+  </div>
+
+  <div className="flex gap-2">
+    <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded">
+      Edit
+    </button>
+    <button onClick={() => todo.id && onDelete(todo.id)}
+      className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded">
+      Delete
+    </button>
+  </div>
+</li>
+
   );
 }
 
