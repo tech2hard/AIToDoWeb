@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import './App.css';
 import TodoForm from './components/TodoForm';
 import TodoList from './components/TodoList';
-import TabFilter from './components/TabFilter';
+import TubelightNavbar from './components/TubelightNavbar';
+import LoginPage from './components/LoginPage';
 import { auth, signInWithGoogle, logOut, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
@@ -23,22 +23,21 @@ function App() {
 
   // Fetch todos for the logged-in user
   useEffect(() => {
-    if (!user) return; // Don't fetch if user is not logged in
+    if (!user) return;
 
     const fetchTodos = async () => {
-      if (!user?.uid) return; // Prevents running query if user is not logged in
+      if (!user?.uid) return; 
     
       try {
         const q = query(collection(db, "todos"), where("userId", "==", user.uid));
         const querySnapshot = await getDocs(q);
         
         const todosData = querySnapshot.docs.map(doc => ({
-          id: doc.id, // Firestore-generated ID
+          id: doc.id,
           ...doc.data()
         }));
     
         setTodos(todosData);
-        console.log("Fetched todos:", todosData); // Debugging log
       } catch (error) {
         console.error("Error fetching todos:", error);
       }
@@ -49,8 +48,7 @@ function App() {
 
   // Add a new todo and store it in Firestore
   const addTodo = async (todoData) => {
-    if (!user) return;
-    if (todoData.text.trim().length === 0) return;
+    if (!user || todoData.text.trim().length === 0) return;
 
     const newTodo = {
       text: todoData.text,
@@ -60,12 +58,12 @@ function App() {
       dueDate: todoData.dueDate,
       priority: todoData.priority,
       createdAt: new Date().toISOString(),
-      userId: user.uid, // Store todo under logged-in user
+      userId: user.uid,
     };
 
     try {
       const docRef = await addDoc(collection(db, "todos"), newTodo);
-      setTodos([...todos, { id: docRef.id, ...newTodo }]); // Firestore-generated ID
+      setTodos([...todos, { id: docRef.id, ...newTodo }]);
     } catch (error) {
       console.error("Error adding todo:", error);
     }
@@ -88,17 +86,11 @@ function App() {
 
   // Delete a todo from Firestore
   const deleteTodo = async (id) => {
-    console.log("Deleting todo with ID:", id); // Debugging log
-  
-    if (!id) {
-      console.error("Error: ID is undefined!");
-      return;
-    }
+    if (!id) return;
   
     try {
       await deleteDoc(doc(db, "todos", id));
       setTodos(todos.filter(todo => todo.id !== id));
-      console.log("Todo deleted successfully!");
     } catch (error) {
       console.error("Error deleting todo:", error);
     }
@@ -121,10 +113,10 @@ function App() {
     return true;
   });
 
-  // Sort todos by date or priority
+  // Sorting logic
   const sortedTodos = [...filteredTodos].sort((a, b) => {
     if (sortBy === 'date') {
-      const dateA = a.dueDate ? new Date(a.dueDate) : new Date(0); // Handle empty dueDate
+      const dateA = a.dueDate ? new Date(a.dueDate) : new Date(0);
       const dateB = b.dueDate ? new Date(b.dueDate) : new Date(0);
       return dateA - dateB;
     }
@@ -136,31 +128,43 @@ function App() {
   });
 
   return (
-    <div className="App">
-      <h1>Todo List</h1>
-
+    <div className="min-h-screen bg-white text-black">
       {!user ? (
-        <button className='auth-buttons' onClick={signInWithGoogle}>Sign In with Google</button>
+        <LoginPage onLogin={signInWithGoogle} />
       ) : (
-        <div>
-          <p>Welcome, {user.displayName}!</p>
-          <button className='auth-buttons' onClick={logOut}>Log Out</button>
+        <div className="relative pt-24">
+          <TubelightNavbar currentFilter={activeTab} onFilterChange={setActiveTab} />
+          
+          <div className="max-w-3xl mx-auto px-6">
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-2xl font-bold">Welcome, {user.displayName}</h1>
+              <button 
+                onClick={logOut}
+                className="px-4 py-2 text-sm bg-black text-white rounded-full hover:bg-gray-800 transition-colors"
+              >
+                Log Out
+              </button>
+            </div>
 
-          <TabFilter activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className="sort-control">
-            <label>Sort by: </label>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="date">Due Date</option>
-              <option value="priority">Priority</option>
-            </select>
+            <div className="flex justify-end mb-6">
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              >
+                <option value="date">Sort by Date</option>
+                <option value="priority">Sort by Priority</option>
+              </select>
+            </div>
+
+            <TodoForm onAdd={addTodo} />
+            <TodoList 
+              todos={sortedTodos} 
+              onToggle={toggleTodo} 
+              onDelete={deleteTodo}
+              onEdit={editTodo}
+            />
           </div>
-          <TodoForm onAdd={addTodo} />
-          <TodoList 
-            todos={sortedTodos} 
-            onToggle={toggleTodo} 
-            onDelete={deleteTodo}
-            onEdit={editTodo}
-          />
         </div>
       )}
     </div>
