@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 
 function TodoForm({ onAdd }) {
   const [text, setText] = useState('');
@@ -9,59 +10,85 @@ function TodoForm({ onAdd }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onAdd({
-      text,
-      category,
-      dueDate,
-      priority,
-      description
-    });
+    if (!text.trim()) return;
+    onAdd({ text, category, dueDate, priority, description });
 
+    // Reset fields after submission
     setText('');
-    setCategory('personal');  // Reset to default category
+    setCategory('personal');
     setDueDate('');
-    setPriority('medium');  // Reset to default priority
+    setPriority('medium');
     setDescription('');
   };
 
   return (
-    <form onSubmit={handleSubmit} className="todo-form">
-      <div className="form-row">
+    <motion.form 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      onSubmit={handleSubmit} 
+      className="bg-white border border-gray-200 rounded-2xl p-6 mb-8"
+    >
+      <div className="space-y-4">
         <input
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Add a new todo"
-        />
-        <input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder= "Describe the task"
+          placeholder="What needs to be done?"
+          className="w-full px-4 py-3 text-lg border-b border-gray-200 focus:border-black focus:outline-none transition-colors"
         />
 
-        <select value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="personal">Personal</option>
-          <option value="work">Work</option>
-          <option value="shopping">Shopping</option>
-          <option value="other">Other</option>
-        </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Add description"
+            className="w-full px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-black"
+          />
+
+          <select 
+            value={category} 
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-black appearance-none bg-white"
+          >
+            <option value="personal">Personal</option>
+            <option value="work">Work</option>
+            <option value="shopping">Shopping</option>
+            <option value="other">Other</option>
+          </select>
+
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-black"
+          />
+
+          <select 
+            value={priority} 
+            onChange={(e) => setPriority(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-black appearance-none bg-white"
+          >
+            <option value="low">Low Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="high">High Priority</option>
+          </select>
+        </div>
+
+        <div className="flex justify-end">
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="submit"
+            className="px-6 py-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors"
+          >
+            Add Task
+          </motion.button>
+        </div>
       </div>
-      <div className="form-row">
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-        />
-        <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-          <option value="low">Low Priority</option>
-          <option value="medium">Medium Priority</option>
-          <option value="high">High Priority</option>
-        </select>
-        <button type="submit">Add</button>
-      </div>
-    </form>
+    </motion.form>
   );
 }
 
-export default TodoForm; 
+export default TodoForm;

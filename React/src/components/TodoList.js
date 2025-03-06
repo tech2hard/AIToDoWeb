@@ -1,9 +1,9 @@
 import React from 'react';
 import TodoItem from './TodoItem';
 
-function TodoList({ todos, onToggle, onDelete,onEdit }) {
+function TodoList({ todos, onToggle, onDelete, onEdit }) {
   return (
-    <ul>
+    <ul className="space-y-3 mt-4">
       {todos.map(todo => (
         <TodoItem
           key={todo.id}
@@ -17,4 +17,4 @@ function TodoList({ todos, onToggle, onDelete,onEdit }) {
   );
 }
 
-export default TodoList; 
+export default TodoList;
