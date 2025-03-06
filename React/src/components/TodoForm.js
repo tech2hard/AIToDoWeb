@@ -5,6 +5,7 @@ function TodoForm({ onAdd }) {
   const [category, setCategory] = useState('personal');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('medium');
+  const [description, setDescription] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -12,10 +13,15 @@ function TodoForm({ onAdd }) {
       text,
       category,
       dueDate,
-      priority
+      priority,
+      description
     });
+
     setText('');
+    setCategory('personal');  // Reset to default category
     setDueDate('');
+    setPriority('medium');  // Reset to default priority
+    setDescription('');
   };
 
   return (
@@ -27,6 +33,13 @@ function TodoForm({ onAdd }) {
           onChange={(e) => setText(e.target.value)}
           placeholder="Add a new todo"
         />
+        <input
+          type="text"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder= "Describe the task"
+        />
+
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="personal">Personal</option>
           <option value="work">Work</option>

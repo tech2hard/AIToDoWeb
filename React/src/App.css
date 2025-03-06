@@ -137,6 +137,16 @@ li button:hover {
   border-bottom: 1px solid #eee;
 }
 
+.todo-text {
+  font-size: 1rem;
+  color: #333;
+  font-weight: bold;
+}
+
+.todo-text.completed {
+  color: rgb(77, 96, 81);
+}
+
 .todo-item.editing {
   display: flex;
   gap: 10px;
