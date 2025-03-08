@@ -132,20 +132,20 @@ function App() {
       {!user ? (
         <LoginPage onLogin={signInWithGoogle} />
       ) : (
-        <div className="relative pt-24">
+        <div className="max-w-3xl mx-auto px-6 pt-8">
+          <div className="flex flex-col items-center mb-8">
+            <h1 className="text-2xl font-bold mb-4">Welcome, {user.displayName}</h1>
+            <button 
+              onClick={logOut}
+              className="px-4 py-2 text-sm bg-black text-white rounded-full hover:bg-gray-800 transition-colors"
+            >
+              Log Out
+            </button>
+          </div>
+
           <TubelightNavbar currentFilter={activeTab} onFilterChange={setActiveTab} />
           
-          <div className="max-w-3xl mx-auto px-6">
-            <div className="flex justify-between items-center mb-8">
-              <h1 className="text-2xl font-bold">Welcome, {user.displayName}</h1>
-              <button 
-                onClick={logOut}
-                className="px-4 py-2 text-sm bg-black text-white rounded-full hover:bg-gray-800 transition-colors"
-              >
-                Log Out
-              </button>
-            </div>
-
+          <div className="mt-8">
             <div className="flex justify-end mb-6">
               <select 
                 value={sortBy} 

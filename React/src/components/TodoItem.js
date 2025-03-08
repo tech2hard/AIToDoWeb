@@ -5,6 +5,7 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(todo.text);
   const [editedDescription, setEditedDescription] = useState(todo.description || '');
+  const [editedAiContent, setEditedAiContent] = useState(todo.aiContent || '');
   const [editedCategory, setEditedCategory] = useState(todo.category);
   const [editedDueDate, setEditedDueDate] = useState(todo.dueDate || '');
   const [editedPriority, setEditedPriority] = useState(todo.priority);
@@ -15,6 +16,7 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
     onEdit(todo.id, {
       text: editedText,
       description: editedDescription,
+      aiContent: editedAiContent,
       category: editedCategory,
       dueDate: editedDueDate,
       priority: editedPriority,
@@ -25,11 +27,12 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
   // Cancel editing and restore previous values
   const handleCancel = () => {
     setEditedText(todo.text);
+    setEditedDescription(todo.description || "");
+    setEditedAiContent(todo.aiContent || "");
     setEditedCategory(todo.category);
     setEditedDueDate(todo.dueDate || "");
     setEditedPriority(todo.priority);
-    setEditedDescription(todo.description || "");
-    setIsEditing(false); // Exit editing mode
+    setIsEditing(false);
   };
 
   // Function to get priority color
@@ -39,7 +42,7 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
       medium: '#666666',
       low: '#999999',
     };
-    return colors[priority] || '#cccccc'; // Default color if priority is missing
+    return colors[priority] || '#cccccc';
   };
 
   // If editing, show input fields
@@ -59,41 +62,63 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
             className="w-full px-4 py-3 text-lg border-b border-gray-200 focus:border-black focus:outline-none transition-colors"
           />
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <select 
-              value={editedCategory}
-              onChange={(e) => setEditedCategory(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-black appearance-none bg-white"
-            >
-              <option value="personal">Personal</option>
-              <option value="work">Work</option>
-              <option value="shopping">Shopping</option>
-              <option value="other">Other</option>
-            </select>
+          <div className="space-y-4">
+            {/* Description Section */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <textarea
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                placeholder="Add your description..."
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                rows="2"
+              />
+            </div>
 
-            <input
-              type="date"
-              value={editedDueDate}
-              onChange={(e) => setEditedDueDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-black"
-            />
+            {/* AI Content Section */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">AI Suggestions</label>
+              <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <textarea
+                  value={editedAiContent}
+                  onChange={(e) => setEditedAiContent(e.target.value)}
+                  placeholder="AI suggestions will appear here"
+                  className="w-full bg-transparent focus:outline-none min-h-[80px]"
+                  rows="3"
+                />
+              </div>
+            </div>
 
-            <select
-              value={editedPriority}
-              onChange={(e) => setEditedPriority(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-black appearance-none bg-white"
-            >
-              <option value="low">Low Priority</option>
-              <option value="medium">Medium Priority</option>
-              <option value="high">High Priority</option>
-            </select>
+            {/* Other Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <select 
+                value={editedCategory}
+                onChange={(e) => setEditedCategory(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-black appearance-none bg-white"
+              >
+                <option value="personal">Personal</option>
+                <option value="work">Work</option>
+                <option value="shopping">Shopping</option>
+                <option value="other">Other</option>
+              </select>
 
-            <textarea
-              value={editedDescription}
-              onChange={(e) => setEditedDescription(e.target.value)}
-              placeholder="Add a description..."
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black min-h-[80px] md:col-span-2"
-            />
+              <input
+                type="date"
+                value={editedDueDate}
+                onChange={(e) => setEditedDueDate(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-black"
+              />
+
+              <select
+                value={editedPriority}
+                onChange={(e) => setEditedPriority(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-black appearance-none bg-white"
+              >
+                <option value="low">Low Priority</option>
+                <option value="medium">Medium Priority</option>
+                <option value="high">High Priority</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex justify-end space-x-3">
@@ -137,13 +162,30 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
           className="mt-1.5 h-5 w-5 rounded border-gray-300 text-black focus:ring-black"
         />
 
-        <div className="flex-grow">
+        <div className="flex-grow space-y-3">
           <h3 className={`text-lg font-medium ${todo.completed ? 'line-through text-gray-400' : ''}`}>
             {todo.text}
           </h3>
-          <p className="text-gray-600 mt-1">{todo.description || "No description"}</p>
           
-          <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+          {/* Description */}
+          {todo.description && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-700">Description:</p>
+              <p className="text-gray-600">{todo.description}</p>
+            </div>
+          )}
+          
+          {/* AI Content */}
+          {todo.aiContent && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-700">AI Suggestions:</p>
+              <div className="bg-gray-50 rounded-lg p-3 text-gray-600">
+                {todo.aiContent}
+              </div>
+            </div>
+          )}
+          
+          <div className="flex items-center gap-4 text-sm text-gray-500">
             <span>{todo.category}</span>
             <span>•</span>
             <span style={{ color: getPriorityColor(todo.priority) }}>{todo.priority} priority</span>
