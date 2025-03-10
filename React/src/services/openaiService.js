@@ -1,6 +1,6 @@
 const fetchAIResponse = async (taskText, description) => {
   const API_KEY = process.env.REACT_APP_OPENAI_KEY;
-  const API_URL = "https://revan-m7ydaljc-swedencentral.openai.azure.com/ ";
+  const API_URL = "https://revan-m7ydaljc-swedencentral.cognitiveservices.azure.com/openai/deployments/gpt-35-turbo/chat/completions?api-version=2024-10-21";
 
   console.log("🔹 Debugging API Call:");
   console.log("🔹 API Key:", API_KEY ? "Exists ✅" : "Missing ❌");
