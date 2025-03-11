@@ -6,12 +6,15 @@ import LoginPage from './components/LoginPage';
 import { auth, signInWithGoogle, logOut, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
+import { motion, AnimatePresence } from 'framer-motion';
 
 function App() {
   const [todos, setTodos] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
   const [sortBy, setSortBy] = useState('date'); // 'date', 'priority'
   const [user, setUser] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [filterCategory, setFilterCategory] = useState('all');
 
   // Track authentication state
   useEffect(() => {
@@ -59,11 +62,13 @@ function App() {
       priority: todoData.priority,
       createdAt: new Date().toISOString(),
       userId: user.uid,
+      
     };
 
     try {
       const docRef = await addDoc(collection(db, "todos"), newTodo);
       setTodos([...todos, { id: docRef.id, ...newTodo }]);
+      setShowForm(false); // Hide form after successful addition
     } catch (error) {
       console.error("Error adding todo:", error);
     }
@@ -106,11 +111,20 @@ function App() {
     }
   };
 
-  // Filter todos based on the selected tab
+  // Update the filtering logic to include both status and category
   const filteredTodos = todos.filter(todo => {
-    if (activeTab === 'completed') return todo.completed;
-    if (activeTab === 'pending') return !todo.completed;
-    return true;
+    // First filter by status (completed/pending)
+    const statusFilter = 
+      activeTab === 'completed' ? todo.completed :
+      activeTab === 'pending' ? !todo.completed :
+      true;
+
+    // Then filter by category
+    const categoryFilter = 
+      filterCategory === 'all' ? true :
+      todo.category === filterCategory;
+
+    return statusFilter && categoryFilter;
   });
 
   // Sorting logic
@@ -134,7 +148,18 @@ function App() {
       ) : (
         <div className="max-w-3xl mx-auto px-6 pt-8">
           <div className="flex flex-col items-center mb-8">
-            <h1 className="text-2xl font-bold mb-4">Welcome, {user.displayName}</h1>
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-6"
+            >
+              <h1 className="text-4xl font-bold tracking-tight mb-1">
+                Taskly
+              </h1>
+              <div className="h-1 w-16 bg-black mx-auto rounded-full"/>
+            </motion.div>
+            
+            <h2 className="text-2xl font-bold mb-4">Welcome, {user.displayName}</h2>
             <button 
               onClick={logOut}
               className="px-4 py-2 text-sm bg-black text-white rounded-full hover:bg-gray-800 transition-colors"
@@ -146,18 +171,62 @@ function App() {
           <TubelightNavbar currentFilter={activeTab} onFilterChange={setActiveTab} />
           
           <div className="mt-8">
-            <div className="flex justify-end mb-6">
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            <div className="flex justify-between items-center mb-6">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowForm(!showForm)}
+                className="px-6 py-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors flex items-center gap-2"
               >
-                <option value="date">Sort by Date</option>
-                <option value="priority">Sort by Priority</option>
-              </select>
+                <span>{showForm ? 'Cancel' : 'New Task'}</span>
+                <svg 
+                  className={`w-4 h-4 transition-transform ${showForm ? 'rotate-45' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </motion.button>
+
+              <div className="flex gap-2">
+                <select 
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="px-4 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                >
+                  <option value="all">All Categories</option>
+                  <option value="personal">Personal</option>
+                  <option value="work">Work</option>
+                  <option value="shopping">Shopping</option>
+                  <option value="other">Other</option>
+                </select>
+
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                >
+                  <option value="date">Sort by Date</option>
+                  <option value="priority">Sort by Priority</option>
+                </select>
+              </div>
             </div>
 
-            <TodoForm onAdd={addTodo} />
+            <AnimatePresence>
+              {showForm && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <TodoForm onAdd={addTodo} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <TodoList 
               todos={sortedTodos} 
               onToggle={toggleTodo} 
