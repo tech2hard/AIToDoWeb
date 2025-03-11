@@ -22,8 +22,8 @@ function TubelightNavbar({ onFilterChange, currentFilter }) {
   ];
 
   return (
-    <div className="fixed top-0 left-1/2 -translate-x-1/2 z-50 pt-6 w-full max-w-md">
-      <nav className="flex items-center justify-center gap-3 bg-white/10 border border-gray-200 backdrop-blur-lg py-1 px-1 rounded-full shadow-lg mx-4">
+    <div className="w-full max-w-md mx-auto">
+      <nav className="flex items-center justify-center gap-3 bg-white/10 border border-gray-200 backdrop-blur-lg py-1 px-1 rounded-full shadow-lg">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentFilter === item.filter;
