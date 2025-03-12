@@ -1,19 +1,23 @@
 import React from 'react';
 import TodoItem from './TodoItem';
+import { AnimatePresence } from 'framer-motion';
 
-function TodoList({ todos, onToggle, onDelete, onEdit }) {
+function TodoList({ todos, onToggle, onDelete, onEdit, currentUserEmail }) {
   return (
-    <ul className="space-y-3 mt-4">
-      {todos.map(todo => (
-        <TodoItem
-          key={todo.id}
-          todo={todo}
-          onToggle={onToggle}
-          onDelete={onDelete}
-          onEdit={onEdit}
-        />
-      ))}
-    </ul>
+    <div className="space-y-4">
+      <AnimatePresence>
+        {todos.map(todo => (
+          <TodoItem
+            key={todo.id}
+            todo={todo}
+            onToggle={onToggle}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            currentUserEmail={currentUserEmail}
+          />
+        ))}
+      </AnimatePresence>
+    </div>
   );
 }
 

@@ -7,22 +7,26 @@ function LoginPage({ onLogin }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen flex flex-col items-center justify-center bg-white"
+      className="min-h-screen flex flex-col items-center justify-center bg-gray-50"
     >
       <div className="text-center mb-12">
-        <motion.h1 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-4xl font-bold text-black mb-4"
+          className="mb-6"
         >
-          Welcome to Tasks
-        </motion.h1>
+          <h1 className="text-5xl font-bold tracking-tight mb-1">
+            Taskly
+          </h1>
+          <div className="h-1 w-16 bg-black mx-auto rounded-full"/>
+        </motion.div>
+        
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="text-gray-600"
+          className="text-gray-600 text-lg"
         >
           Sign in to access your tasks
         </motion.p>
@@ -31,9 +35,11 @@ function LoginPage({ onLogin }) {
       <motion.button
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
         transition={{ delay: 0.4 }}
         onClick={onLogin}
-        className="flex items-center gap-3 px-6 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors"
+        className="flex items-center gap-3 px-8 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors shadow-lg"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path

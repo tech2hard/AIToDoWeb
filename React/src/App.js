@@ -7,6 +7,8 @@ import { auth, signInWithGoogle, logOut, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
 import { motion, AnimatePresence } from 'framer-motion';
+import InvitationsModal from './components/InvitationsModal';
+import { getPendingInvitations } from './firebase';
 
 function App() {
   const [todos, setTodos] = useState([]);
@@ -15,6 +17,8 @@ function App() {
   const [user, setUser] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
+  const [invitations, setInvitations] = useState([]);
+  const [showInvitations, setShowInvitations] = useState(false);
 
   // Track authentication state
   useEffect(() => {
@@ -32,21 +36,56 @@ function App() {
       if (!user?.uid) return; 
     
       try {
-        const q = query(collection(db, "todos"), where("userId", "==", user.uid));
-        const querySnapshot = await getDocs(q);
-        
-        const todosData = querySnapshot.docs.map(doc => ({
+        // Fetch owned todos
+        const ownedTodosQuery = query(collection(db, "todos"), 
+          where("userId", "==", user.uid)
+        );
+        const ownedTodosSnapshot = await getDocs(ownedTodosQuery);
+        const ownedTodos = ownedTodosSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
+          isOwner: true
         }));
-    
-        setTodos(todosData);
+
+        // Fetch shared todos
+        const userRef = doc(db, 'users', user.uid);
+        const sharedTodosRef = collection(userRef, 'shared_todos');
+        const sharedTodosSnapshot = await getDocs(sharedTodosRef);
+
+        // Map shared todos directly from the stored data
+        const sharedTodos = sharedTodosSnapshot.docs.map(doc => ({
+          id: doc.data().todoId,
+          ...doc.data().todoData,
+          isShared: true,
+          sharedId: doc.id,
+          ownerEmail: doc.data().ownerEmail,
+          originalOwner: doc.data().originalOwner,
+          permission: doc.data().permission
+        }));
+
+        // Combine owned and shared todos
+        setTodos([...ownedTodos, ...sharedTodos]);
       } catch (error) {
         console.error("Error fetching todos:", error);
       }
     };
 
     fetchTodos();
+  }, [user]);
+
+  // Fetch invitations when user logs in
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const fetchInvitations = async () => {
+      const pendingInvitations = await getPendingInvitations(user.email);
+      setInvitations(pendingInvitations);
+      if (pendingInvitations.length > 0) {
+        setShowInvitations(true);
+      }
+    };
+
+    fetchInvitations();
   }, [user]);
 
   // Add a new todo and store it in Firestore
@@ -62,12 +101,13 @@ function App() {
       priority: todoData.priority,
       createdAt: new Date().toISOString(),
       userId: user.uid,
-      
+      owner: user.email,
+      originalOwner: user.email,
     };
 
     try {
       const docRef = await addDoc(collection(db, "todos"), newTodo);
-      setTodos([...todos, { id: docRef.id, ...newTodo }]);
+      setTodos([{ id: docRef.id, ...newTodo }, ...todos]);
       setShowForm(false); // Hide form after successful addition
     } catch (error) {
       console.error("Error adding todo:", error);
@@ -79,23 +119,48 @@ function App() {
     const todo = todos.find(todo => todo.id === id);
     if (!todo) return;
 
-    const updatedTodo = { ...todo, completed: !todo.completed };
+    // Don't allow toggling shared todos with view-only permission
+    if (todo.isShared && todo.permission === 'view') return;
 
     try {
-      await updateDoc(doc(db, "todos", id), { completed: updatedTodo.completed });
-      setTodos(todos.map(todo => (todo.id === id ? updatedTodo : todo)));
+      const updatedTodo = { ...todo, completed: !todo.completed };
+      
+      if (todo.isShared) {
+        // Update the shared todo in the user's shared_todos collection
+        const userRef = doc(db, 'users', user.uid);
+        const sharedTodoRef = doc(userRef, 'shared_todos', todo.sharedId);
+        await updateDoc(sharedTodoRef, {
+          'todoData.completed': updatedTodo.completed
+        });
+      } else {
+        // Update the original todo
+        await updateDoc(doc(db, 'todos', id), { completed: updatedTodo.completed });
+      }
+
+      setTodos(todos.map(t => (t.id === id ? updatedTodo : t)));
     } catch (error) {
-      console.error("Error updating todo:", error);
+      console.error('Error updating todo:', error);
     }
   };
 
   // Delete a todo from Firestore
-  const deleteTodo = async (id) => {
-    if (!id) return;
+  const deleteTodo = async (id, isShared, sharedId) => {
+    if (!id || !user?.uid) return;
   
     try {
-      await deleteDoc(doc(db, "todos", id));
-      setTodos(todos.filter(todo => todo.id !== id));
+      if (isShared && sharedId) {
+        // If it's a shared todo, remove it from the user's shared_todos collection
+        const userRef = doc(db, 'users', user.uid);
+        const sharedTodoRef = doc(userRef, 'shared_todos', sharedId);
+        await deleteDoc(sharedTodoRef);
+        // Only remove from local state if it's a shared todo
+        setTodos(todos.filter(todo => todo.sharedId !== sharedId));
+      } else {
+        // If it's an owned todo, delete it from the todos collection
+        await deleteDoc(doc(db, "todos", id));
+        // Only remove from local state if it's an owned todo
+        setTodos(todos.filter(todo => !todo.isShared && todo.id !== id));
+      }
     } catch (error) {
       console.error("Error deleting todo:", error);
     }
@@ -103,6 +168,12 @@ function App() {
 
   // Edit a todo and update Firestore
   const editTodo = async (id, updatedTodo) => {
+    const todo = todos.find(todo => todo.id === id);
+    if (!todo) return;
+
+    // Don't allow editing shared todos with view-only permission
+    if (todo.isShared && todo.permission === 'view') return;
+
     try {
       await updateDoc(doc(db, "todos", id), updatedTodo);
       setTodos(todos.map(todo => (todo.id === id ? { ...todo, ...updatedTodo } : todo)));
@@ -130,19 +201,37 @@ function App() {
   // Sorting logic
   const sortedTodos = [...filteredTodos].sort((a, b) => {
     if (sortBy === 'date') {
-      const dateA = a.dueDate ? new Date(a.dueDate) : new Date(0);
-      const dateB = b.dueDate ? new Date(b.dueDate) : new Date(0);
-      return dateA - dateB;
+      // First try to sort by due date if available
+      if (a.dueDate && b.dueDate) {
+        return new Date(a.dueDate) - new Date(b.dueDate);
+      }
+      // If no due dates, sort by creation date (newest first)
+      const createdAtA = new Date(a.createdAt);
+      const createdAtB = new Date(b.createdAt);
+      return createdAtB - createdAtA;
     }
     if (sortBy === 'priority') {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
-      return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
+      const priorityDiff = (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
+      // If same priority, sort by creation date (newest first)
+      if (priorityDiff === 0) {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      return priorityDiff;
     }
-    return 0;
+    // Default sort by creation date (newest first)
+    return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
+  // Handle invitation response
+  const handleInvitationResponse = async () => {
+    if (!user?.email) return;
+    const pendingInvitations = await getPendingInvitations(user.email);
+    setInvitations(pendingInvitations);
+  };
+
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-gray-50">
       {!user ? (
         <LoginPage onLogin={signInWithGoogle} />
       ) : (
@@ -227,11 +316,33 @@ function App() {
               )}
             </AnimatePresence>
 
+            {/* Notification Badge */}
+            {invitations.length > 0 && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowInvitations(true)}
+                className="fixed top-4 right-4 bg-black text-white px-4 py-2 rounded-full shadow-lg"
+              >
+                {invitations.length} Pending Invitation{invitations.length !== 1 ? 's' : ''}
+              </motion.button>
+            )}
+
+            {/* Invitations Modal */}
+            <InvitationsModal
+              isOpen={showInvitations}
+              onClose={() => setShowInvitations(false)}
+              invitations={invitations}
+              userEmail={user.email}
+              onInvitationHandled={handleInvitationResponse}
+            />
+
             <TodoList 
               todos={sortedTodos} 
               onToggle={toggleTodo} 
-              onDelete={deleteTodo}
+              onDelete={(id, isShared, sharedId) => deleteTodo(id, isShared, sharedId)}
               onEdit={editTodo}
+              currentUserEmail={user.email}
             />
           </div>
         </div>
