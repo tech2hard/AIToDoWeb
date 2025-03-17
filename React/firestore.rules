@@ -1,0 +1,103 @@
+/**
+ * Firestore Security Rules
+ * Defines access control and validation rules for the Firestore database
+ * Implements a permission-based system for todo sharing and management
+ */
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    /**
+     * Helper Functions
+     * These functions are used throughout the rules to check permissions
+     */
+
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the user owns the todo
+    function isOwner(todoData) {
+      return request.auth.token.email == todoData.owner;
+    }
+
+    // Check if the user is the original creator of the todo
+    function isOriginalOwner(todoData) {
+      return request.auth.token.email == todoData.originalOwner;
+    }
+
+    // Check if the user has edit permission for the todo
+    function hasEditPermission(todoData) {
+      return isOwner(todoData) || isOriginalOwner(todoData) || (
+        todoData.permission == 'edit'
+      );
+    }
+
+    // Check if the user has view permission for the todo
+    function hasViewPermission(todoData) {
+      return isOwner(todoData) || (
+        todoData.sharedWith != null && 
+        todoData.sharedWith[request.auth.token.email] != null
+      );
+    }
+
+    // Check if the user is involved with the todo (owner, original owner, or shared with)
+    function isInvolvedWithTodo(todoId) {
+      let todoDoc = get(/databases/$(database)/documents/todos/$(todoId));
+      return todoDoc != null && (
+        isOwner(todoDoc.data) || 
+        isOriginalOwner(todoDoc.data) || 
+        hasViewPermission(todoDoc.data)
+      );
+    }
+
+    /**
+     * Collection Rules
+     * Define access control for each collection in the database
+     */
+
+    // Rules for the todos collection
+    match /todos/{todoId} {
+      // Any authenticated user can create a todo
+      allow create: if isAuthenticated();
+      
+      // Any authenticated user can read todos
+      allow read: if isAuthenticated();
+      
+      // Only users with edit permission can update the todo
+      allow update: if isAuthenticated() && hasEditPermission(resource.data);
+      
+      // Only the owner can delete the todo
+      allow delete: if isAuthenticated() && isOwner(resource.data);
+    }
+
+    // Rules for the users collection
+    match /users/{userId} {
+      // Any authenticated user can read user documents
+      allow read: if isAuthenticated();
+      
+      // Users can only modify their own documents
+      allow write: if isAuthenticated();
+      
+      // Rules for shared_todos subcollection
+      match /shared_todos/{sharedTodoId} {
+        // Any authenticated user can read and write shared todos
+        allow read, write: if isAuthenticated();
+      }
+
+      // Rules for invited_todos subcollection
+      match /invited_todos/{invitationId} {
+        // Any authenticated user can read and write invitations
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // Rules for the userProfiles collection
+    match /userProfiles/{email} {
+      // Any authenticated user can read and write user profiles
+      allow read, write: if isAuthenticated();
+    }
+  }
+} 
