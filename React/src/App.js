@@ -1,3 +1,13 @@
+/**
+ * Main App Component
+ * Handles the core application logic including:
+ * - User authentication
+ * - Todo management (CRUD operations)
+ * - Filtering and sorting
+ * - Sharing functionality
+ * - UI state management
+ */
+
 import React, { useState, useEffect } from 'react';
 import TodoForm from './components/TodoForm';
 import TodoList from './components/TodoList';
@@ -11,16 +21,20 @@ import InvitationsModal from './components/InvitationsModal';
 import { getPendingInvitations } from './firebase';
 
 function App() {
-  const [todos, setTodos] = useState([]);
-  const [activeTab, setActiveTab] = useState('all');
-  const [sortBy, setSortBy] = useState('date'); // 'date', 'priority'
-  const [user, setUser] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [invitations, setInvitations] = useState([]);
-  const [showInvitations, setShowInvitations] = useState(false);
+  // State management for todos and UI
+  const [todos, setTodos] = useState([]); // List of all todos (owned + shared)
+  const [activeTab, setActiveTab] = useState('all'); // Current filter tab (all/pending/completed)
+  const [sortBy, setSortBy] = useState('date'); // Current sort method (date/priority)
+  const [user, setUser] = useState(null); // Current authenticated user
+  const [showForm, setShowForm] = useState(false); // Toggle for new todo form
+  const [filterCategory, setFilterCategory] = useState('all'); // Current category filter
+  const [invitations, setInvitations] = useState([]); // List of pending todo invitations
+  const [showInvitations, setShowInvitations] = useState(false); // Toggle for invitations modal
 
-  // Track authentication state
+  /**
+   * Authentication State Observer
+   * Updates the user state whenever the authentication state changes
+   */
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -28,7 +42,12 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch todos for the logged-in user
+  /**
+   * Todo Fetching Effect
+   * Fetches both owned and shared todos when the user logs in
+   * - Fetches todos owned by the user from the todos collection
+   * - Fetches shared todos from the user's shared_todos subcollection
+   */
   useEffect(() => {
     if (!user) return;
 
@@ -36,7 +55,7 @@ function App() {
       if (!user?.uid) return; 
     
       try {
-        // Fetch owned todos
+        // Fetch todos owned by the current user
         const ownedTodosQuery = query(collection(db, "todos"), 
           where("userId", "==", user.uid)
         );
@@ -47,12 +66,12 @@ function App() {
           isOwner: true
         }));
 
-        // Fetch shared todos
+        // Fetch todos shared with the current user
         const userRef = doc(db, 'users', user.uid);
         const sharedTodosRef = collection(userRef, 'shared_todos');
         const sharedTodosSnapshot = await getDocs(sharedTodosRef);
 
-        // Map shared todos directly from the stored data
+        // Transform shared todos data
         const sharedTodos = sharedTodosSnapshot.docs.map(doc => ({
           id: doc.data().todoId,
           ...doc.data().todoData,
@@ -73,7 +92,10 @@ function App() {
     fetchTodos();
   }, [user]);
 
-  // Fetch invitations when user logs in
+  /**
+   * Invitations Fetching Effect
+   * Fetches pending todo invitations when the user logs in
+   */
   useEffect(() => {
     if (!user?.email) return;
 
@@ -88,7 +110,11 @@ function App() {
     fetchInvitations();
   }, [user]);
 
-  // Add a new todo and store it in Firestore
+  /**
+   * Add a new todo
+   * Creates a new todo in Firestore and updates the local state
+   * @param {Object} todoData - The todo data to be added
+   */
   const addTodo = async (todoData) => {
     if (!user || todoData.text.trim().length === 0) return;
 
@@ -108,32 +134,37 @@ function App() {
     try {
       const docRef = await addDoc(collection(db, "todos"), newTodo);
       setTodos([{ id: docRef.id, ...newTodo }, ...todos]);
-      setShowForm(false); // Hide form after successful addition
+      setShowForm(false);
     } catch (error) {
       console.error("Error adding todo:", error);
     }
   };
 
-  // Toggle todo completion and update Firestore
+  /**
+   * Toggle todo completion status
+   * Updates the completion status in Firestore and local state
+   * Handles both owned and shared todos with proper permission checks
+   * @param {string} id - The ID of the todo to toggle
+   */
   const toggleTodo = async (id) => {
     const todo = todos.find(todo => todo.id === id);
     if (!todo) return;
 
-    // Don't allow toggling shared todos with view-only permission
+    // Prevent toggling shared todos with view-only permission
     if (todo.isShared && todo.permission === 'view') return;
 
     try {
       const updatedTodo = { ...todo, completed: !todo.completed };
       
       if (todo.isShared) {
-        // Update the shared todo in the user's shared_todos collection
+        // Update shared todo in user's shared_todos collection
         const userRef = doc(db, 'users', user.uid);
         const sharedTodoRef = doc(userRef, 'shared_todos', todo.sharedId);
         await updateDoc(sharedTodoRef, {
           'todoData.completed': updatedTodo.completed
         });
       } else {
-        // Update the original todo
+        // Update original todo in todos collection
         await updateDoc(doc(db, 'todos', id), { completed: updatedTodo.completed });
       }
 
@@ -143,22 +174,27 @@ function App() {
     }
   };
 
-  // Delete a todo from Firestore
+  /**
+   * Delete a todo
+   * Removes the todo from Firestore and local state
+   * Handles both owned and shared todos differently
+   * @param {string} id - The ID of the todo to delete
+   * @param {boolean} isShared - Whether the todo is shared
+   * @param {string} sharedId - The ID of the shared todo document
+   */
   const deleteTodo = async (id, isShared, sharedId) => {
     if (!id || !user?.uid) return;
   
     try {
       if (isShared && sharedId) {
-        // If it's a shared todo, remove it from the user's shared_todos collection
+        // Remove shared todo from user's shared_todos collection
         const userRef = doc(db, 'users', user.uid);
         const sharedTodoRef = doc(userRef, 'shared_todos', sharedId);
         await deleteDoc(sharedTodoRef);
-        // Only remove from local state if it's a shared todo
         setTodos(todos.filter(todo => todo.sharedId !== sharedId));
       } else {
-        // If it's an owned todo, delete it from the todos collection
+        // Remove owned todo from todos collection
         await deleteDoc(doc(db, "todos", id));
-        // Only remove from local state if it's an owned todo
         setTodos(todos.filter(todo => !todo.isShared && todo.id !== id));
       }
     } catch (error) {
@@ -166,12 +202,18 @@ function App() {
     }
   };
 
-  // Edit a todo and update Firestore
+  /**
+   * Edit a todo
+   * Updates the todo in Firestore and local state
+   * Includes permission checks for shared todos
+   * @param {string} id - The ID of the todo to edit
+   * @param {Object} updatedTodo - The updated todo data
+   */
   const editTodo = async (id, updatedTodo) => {
     const todo = todos.find(todo => todo.id === id);
     if (!todo) return;
 
-    // Don't allow editing shared todos with view-only permission
+    // Prevent editing shared todos with view-only permission
     if (todo.isShared && todo.permission === 'view') return;
 
     try {
@@ -182,15 +224,18 @@ function App() {
     }
   };
 
-  // Update the filtering logic to include both status and category
+  /**
+   * Filter todos based on completion status and category
+   * @returns {Array} Filtered todos array
+   */
   const filteredTodos = todos.filter(todo => {
-    // First filter by status (completed/pending)
+    // Filter by completion status
     const statusFilter = 
       activeTab === 'completed' ? todo.completed :
       activeTab === 'pending' ? !todo.completed :
       true;
 
-    // Then filter by category
+    // Filter by category
     const categoryFilter = 
       filterCategory === 'all' ? true :
       todo.category === filterCategory;
@@ -198,22 +243,24 @@ function App() {
     return statusFilter && categoryFilter;
   });
 
-  // Sorting logic
+  /**
+   * Sort todos based on selected sorting method
+   * @returns {Array} Sorted todos array
+   */
   const sortedTodos = [...filteredTodos].sort((a, b) => {
     if (sortBy === 'date') {
-      // First try to sort by due date if available
+      // Sort by due date if available, otherwise by creation date
       if (a.dueDate && b.dueDate) {
         return new Date(a.dueDate) - new Date(b.dueDate);
       }
-      // If no due dates, sort by creation date (newest first)
       const createdAtA = new Date(a.createdAt);
       const createdAtB = new Date(b.createdAt);
       return createdAtB - createdAtA;
     }
     if (sortBy === 'priority') {
+      // Sort by priority, with secondary sort by creation date
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       const priorityDiff = (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
-      // If same priority, sort by creation date (newest first)
       if (priorityDiff === 0) {
         return new Date(b.createdAt) - new Date(a.createdAt);
       }
@@ -223,7 +270,10 @@ function App() {
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
-  // Handle invitation response
+  /**
+   * Handle invitation response
+   * Refreshes the invitations list after handling an invitation
+   */
   const handleInvitationResponse = async () => {
     if (!user?.email) return;
     const pendingInvitations = await getPendingInvitations(user.email);
