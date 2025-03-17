@@ -18,3 +18,5 @@ yarn-error.log
 # Ignore package-lock.json or yarn.lock if not needed
 package-lock.json
 yarn.lock
+
+firestore.rules
